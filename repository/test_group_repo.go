@@ -6,7 +6,7 @@ import (
 	"test_tracker_backend/domain"
 )
 
-type testGroupRepository struct {
+type testGroupRepository struct { 
 	db *sql.DB
 }
 
