@@ -107,15 +107,6 @@ func (u *userUsecase) ResetPassword (ctx context.Context, req *domain.ResetPassw
 	return u.userRepo.UpdatePassword(ctx, user.ID, string(newHashedPassword))
 
 }
-func generateSecureToken (length int)(string, error){
-	bytes := make([]byte,length)
-	if _,error := rand.Read(bytes); error != nil {
-		return "",error
-	}
-	return hex.EncodeToString(bytes) , nil
-}
-
-
 
 func (u *userUsecase) ForgotPassword (ctx context.Context , email string) error{
 	ctx , cancel := context.WithTimeout(ctx, u.contextTimeout)
@@ -189,4 +180,12 @@ func (u *userUsecase) UpdatePassword(ctx context.Context, userID string, newPass
 	}
 
 	return u.userRepo.UpdatePassword(ctx, userID, string(hashedPassword))
+}
+
+func generateSecureToken (length int)(string, error){
+	bytes := make([]byte,length)
+	if _,error := rand.Read(bytes); error != nil {
+		return "",error
+	}
+	return hex.EncodeToString(bytes) , nil
 }

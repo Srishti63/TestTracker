@@ -3,6 +3,8 @@ package domain
 import (
 	"context"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 // User represents the core database entity schema mapped to PostgreSQL.
@@ -50,9 +52,6 @@ type ForgotPasswordRequest struct{
 	Email string `json:"email" binding:"required,email"`
 
 }
-// --- Layer Interface Contracts ---
-
-// UserRepository defines the raw data access layout talking to PostgreSQL.
 type UserRepository interface {
 	Create(ctx context.Context, user *User) error
 	GetByID(ctx context.Context, id string) (*User, error)
@@ -63,7 +62,6 @@ type UserRepository interface {
 	ClearResetToken(ctx context.Context, userID string) error
 }
 
-// UserUsecase defines the high-level core business logic orchestration engine.
 type UserUsecase interface {
 	Register(ctx context.Context, req *RegisterRequest) error
 	Login(ctx context.Context, req *LoginRequest) (string, error) // Returns signed JWT token string
@@ -71,4 +69,11 @@ type UserUsecase interface {
 	UpdatePassword(ctx context.Context, userID string, newPassword string) error
 	ForgotPassword(ctx context.Context, email string) error
 	ConfirmPasswordReset(ctx context.Context, req *ConfirmPasswordResetRequest) error
+}
+
+type UserController interface {
+    Register(c *gin.Context)
+    Login(c *gin.Context)
+    ForgotPassword(c *gin.Context)
+    ConfirmPasswordReset(c *gin.Context)
 }

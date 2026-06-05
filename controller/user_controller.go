@@ -1,92 +1,99 @@
 package controller
 
 import (
+	//"encoding/json"
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"test_tracker_backend/domain"
-	"test_tracker_backend/usecase"
-
-	"github.com/gin-gonic/gin"
-	"golang.org/x/text/message"
 )
- 
+
 type userController struct {
 	UserUsecase domain.UserUsecase
 }
 
-func NewUserController (usecase domain.UserUsecase) *userController{
+func NewUserController(usecase domain.UserUsecase) domain.UserController {
 	return &userController{
 		UserUsecase: usecase,
 	}
 }
 
-func (u *userController) Login ( c *gin.Context){
+func (u *userController) Login(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	var req domain.LoginRequest
 
-	if err := c.ShouldBindBodyWithJSON(&req); err != nil{
-		c.JSON(http.StatusBadRequest, gin.H{"error":  "Invalid request body or missing credentials"})
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body or missing credentials"})
 		return
 	}
 
 	token, err := u.UserUsecase.Login(ctx, &req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error" : err.Error()})
-		return 
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message" : "Login successful",
-		"access-token" : token,
+		"message":      "Login successful",
+		"access-token": token,
 	})
 }
 
-func (u *userController) Register(c *gin.Context){
-	ctx := c. Request.Context()
+func (u *userController) Register(c *gin.Context) {
+	ctx := c.Request.Context()
 
 	var req domain.RegisterRequest
-	if err := c.ShouldBindJSON(&req); err != nil{
-		c.JSON(http.StatusBadRequest, gin.H{"error" : err.Error()})
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	err := u.UserUsecase.Register(ctx, &req)
-	if err != nil{
-		c.JSON(http.StatusBadRequest, gin.H{"error" : err.Error()})
-		return 
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message" : "Registered successfully",
+		"message": "Registered successfully",
 	})
 }
 
-func (u *userController) ForgotPassword (c *gin.Context){
+func (u *userController) ForgotPassword(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	var req domain.ForgotPasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil{
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "A valid email address is required"})
-		return 
+		return
 	}
 
-	err := u.UserUsecase.ForgotPassword(ctx,req.Email)
-	if err != nil{
+	err := u.UserUsecase.ForgotPassword(ctx, req.Email)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal communication channel breakdown"})
-	return
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message" : "If the account exists , a secure verification has been dispatched",
+		"message": "If the account exists , a secure verification has been dispatched",
 	})
 }
 
-func (u *userController) ConfirmPasswordReset(c *gin.Context){
-	ctx := c.Request.Context()
-
+func (ctrl *userController) ConfirmPasswordReset(c *gin.Context) {
 	var req domain.ConfirmPasswordResetRequest
-	if err := c.ShouldBindJSON(&req); err != nil{
-		
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+		return
 	}
 
+	ctx := c.Request.Context()
+	err := ctrl.UserUsecase.ConfirmPasswordReset(ctx, &req)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password has been reset successfully"})
 }

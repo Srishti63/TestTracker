@@ -21,6 +21,7 @@ type TestRepository interface {
 	CreateWithEntries(ctx context.Context, test *Test, entries []Entry) error
 }
 
+
 type TestUsecase interface {
 	LogPerformance(ctx context.Context, test *Test, entries []Entry) error
 }

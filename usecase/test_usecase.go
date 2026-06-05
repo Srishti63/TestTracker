@@ -37,7 +37,6 @@ func (tu* testUsecase) LogPerformance(ctx context.Context, test *domain.Test , e
 
 	// 3. Link the child score slices back to this parent Test record
 	for i := range entries {
-		// Business check: protect against malicious negative values
 		if entries[i].MarksObtained < 0 {
 			return errors.New("marks obtained cannot be negative values")
 		}
