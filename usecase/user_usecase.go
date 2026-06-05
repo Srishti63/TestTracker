@@ -85,28 +85,28 @@ func (u *userUsecase) Login (ctx context.Context ,req  *domain.LoginRequest)(str
 	return token, nil
 }
 
-func (u *userUsecase) ResetPassword (ctx context.Context, req *domain.ResetPasswordRequest) error{
-	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
-	defer cancel()
+// func (u *userUsecase) ResetPassword (ctx context.Context, req *domain.ResetPasswordRequest) error{
+// 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
+// 	defer cancel()
 
-	user, err := u.userRepo.GetByEmail(ctx, req.Email)
-	if err != nil {
-		return errors.New("Identity mapping lookup failed")
-	}
+// 	user, err := u.userRepo.GetByEmail(ctx, req.Email)
+// 	if err != nil {
+// 		return errors.New("Identity mapping lookup failed")
+// 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash),[]byte(req.OldPassword))
-	if err != nil {
-		return errors.New("Current credentials varification failed")
-	}
+// 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash),[]byte(req.OldPassword))
+// 	if err != nil {
+// 		return errors.New("Current credentials varification failed")
+// 	}
 
-	newHashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword),12)
-	if err != nil{
-		return errors.New("CryptoGraphic mutation process failure") // a statement of error yet interesting thing to read ,read later 
-	}
+// 	newHashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword),12)
+// 	if err != nil{
+// 		return errors.New("CryptoGraphic mutation process failure") // a statement of error yet interesting thing to read ,read later 
+// 	}
 
-	return u.userRepo.UpdatePassword(ctx, user.ID, string(newHashedPassword))
+// 	return u.userRepo.UpdatePassword(ctx, user.ID, string(newHashedPassword))
 
-}
+// }
 
 func (u *userUsecase) ForgotPassword (ctx context.Context , email string) error{
 	ctx , cancel := context.WithTimeout(ctx, u.contextTimeout)

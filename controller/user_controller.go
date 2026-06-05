@@ -1,10 +1,10 @@
 package controller
 
 import (
-	//"encoding/json"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"test_tracker_backend/domain"
+
+	"github.com/gin-gonic/gin"
 )
 
 type userController struct {
@@ -17,83 +17,84 @@ func NewUserController(usecase domain.UserUsecase) domain.UserController {
 	}
 }
 
-func (u *userController) Login(c *gin.Context) {
+
+func (u *userController) Register(c *gin.Context) {
 	ctx := c.Request.Context()
+	var dto RegisterDTO
 
-	var req domain.LoginRequest
-
-	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body or missing credentials"})
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	token, err := u.UserUsecase.Login(ctx, &req)
+	domainReq := dto.ToDomain()
+	err := u.UserUsecase.Register(ctx, domainReq)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully!"})
+}
+
+func (u *userController) Login(c *gin.Context) {
+	ctx := c.Request.Context()
+	var dto LoginDTO
+
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	domainReq := dto.ToDomain()
+	token, err := u.UserUsecase.Login(ctx, domainReq)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":      "Login successful",
-		"access-token": token,
+		"message":      "Login successful!",
+		"access_token": token,
 	})
 }
 
-func (u *userController) Register(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	var req domain.RegisterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	err := u.UserUsecase.Register(ctx, &req)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "Registered successfully",
-	})
-}
 
 func (u *userController) ForgotPassword(c *gin.Context) {
 	ctx := c.Request.Context()
+	var dto ForgotPasswordDTO
 
-	var req domain.ForgotPasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "A valid email address is required"})
-		return
-	}
-
-	err := u.UserUsecase.ForgotPassword(ctx, req.Email)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal communication channel breakdown"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "If the account exists , a secure verification has been dispatched",
-	})
-}
-
-func (ctrl *userController) ConfirmPasswordReset(c *gin.Context) {
-	var req domain.ConfirmPasswordResetRequest
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
-		return
-	}
-
-	ctx := c.Request.Context()
-	err := ctrl.UserUsecase.ConfirmPasswordReset(ctx, &req)
-
-	if err != nil {
+	if err := c.ShouldBindJSON(&dto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Password has been reset successfully"})
+	domainReq := dto.ToDomain()
+	err := u.UserUsecase.ForgotPassword(ctx, domainReq.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password reset token sent to your email!"})
+}
+
+
+func (u *userController) ConfirmPasswordReset(c *gin.Context) {
+	ctx := c.Request.Context()
+	var dto ConfirmPasswordResetDTO
+
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	domainReq := dto.ToDomain()
+	err := u.UserUsecase.ConfirmPasswordReset(ctx, domainReq)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully!"})
 }

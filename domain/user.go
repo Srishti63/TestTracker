@@ -21,37 +21,26 @@ type User struct {
 // --- Request DTOs (Data Transfer Objects) for Controllers ---
 
 type RegisterRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
+	Email    string 
+	Password string 
+	Name     string 
 }
 
 type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type ResetPasswordRequest struct {
-	Email       string `json:"email"`
-	OldPassword string `json:"old_password"`
-	NewPassword string `json:"new_password"`
+	Email    string 
+	Password string 
 }
 
 type ConfirmPasswordResetRequest struct {
-	Email       string `json:"email" binding:"required,email"`
-	RandomToken string `json:"random_token" binding:"required"`
-	NewPassword string `json:"new_password" binding:"required,min=6"`
-}
-
-type UpdatePasswordRequest struct {
-	UserID      string `json:"user_id" binding:"required"`
-	NewPassword string `json:"new_password" binding:"required,min=6"`
+	Email       string 
+	RandomToken string 
+	NewPassword string 
 }
 
 type ForgotPasswordRequest struct{
-	Email string `json:"email" binding:"required,email"`
-
+	Email string 
 }
+
 type UserRepository interface {
 	Create(ctx context.Context, user *User) error
 	GetByID(ctx context.Context, id string) (*User, error)
@@ -65,7 +54,6 @@ type UserRepository interface {
 type UserUsecase interface {
 	Register(ctx context.Context, req *RegisterRequest) error
 	Login(ctx context.Context, req *LoginRequest) (string, error) // Returns signed JWT token string
-	ResetPassword(ctx context.Context, req *ResetPasswordRequest) error
 	UpdatePassword(ctx context.Context, userID string, newPassword string) error
 	ForgotPassword(ctx context.Context, email string) error
 	ConfirmPasswordReset(ctx context.Context, req *ConfirmPasswordResetRequest) error
