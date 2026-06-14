@@ -3,9 +3,10 @@ package domain
 import "context"
 
 type SubjectPreset struct {
-	ID          string  `json:"id" db:"_id"`
+	ID          string  `json:"id" db:"id"`
 	TestGroupID string  `json:"test_group_id" db:"test_group_id"`
-	SubjectName string  `json:"subject_name" db:"subject_name"`
+	SubjectID   string  `json:"subject_id" db:"subject_id"`
+	SubjectName string  `json:"subject_name" db:"subject_name"` 
 	TotalMarks  float64 `json:"total_marks" db:"total_marks"`
 }
 

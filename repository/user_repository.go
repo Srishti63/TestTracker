@@ -58,19 +58,19 @@ func (r *userRepository) GetByID(ctx context.Context, ID string) (*domain.User, 
 }
 
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
-	query := `SELECT _id, name, passwordhash, created_at, email FROM users WHERE email = $1;`
+    query := `SELECT _id, name, passwordhash, created_at, email, reset_token FROM users WHERE email = $1;`
 
-	row := r.db.QueryRowContext(ctx, query, email)
+    row := r.db.QueryRowContext(ctx, query, email)
 
-	var user domain.User
-	err := row.Scan(&user.ID, &user.Name, &user.PasswordHash, &user.CreatedAt, &user.Email)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil 
-		}
-		return nil, err
-	}
-	return &user, nil
+    var user domain.User
+    err := row.Scan(&user.ID, &user.Name, &user.PasswordHash, &user.CreatedAt, &user.Email, &user.ResetToken)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return nil, nil 
+        }
+        return nil, err
+    }
+    return &user, nil
 }
 
 func (r *userRepository) UpdatePassword(ctx context.Context, userID string, hashedNewPassword string) error {
@@ -79,7 +79,6 @@ func (r *userRepository) UpdatePassword(ctx context.Context, userID string, hash
 		SET passwordhash = $1
 		WHERE _id = $2;`
 
-	// Passed BOTH variables in the exact placeholder order: $1, $2
 	_, err := r.db.ExecContext(ctx, query, hashedNewPassword, userID)
 	return err
 }
@@ -90,7 +89,6 @@ func (r *userRepository) UpdateResetToken(ctx context.Context, userID string, to
 		SET reset_token = $1, reset_token_expiry = $2 
 		WHERE _id = $3;`
 
-	// Pass variables in exact matching placeholder sequence: $1, $2, $3
 	_, err := r.db.ExecContext(ctx, query, token, expiry, userID)
 	return err
 }

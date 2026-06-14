@@ -20,12 +20,12 @@ func SendResetTokenEmail (config *EmailConfig, token string, toEmail string) err
 	body := fmt.Sprintf(`
 		<h3>TestTracker Password Reset Request</h3>
 		<p>You requested a password reset. Please use the following random string verification token to confirm your identity:</p>
-		<p style="font-size: 18px; font-weight: bold; color: #4F46E5; letter-spacing: 1px;">%s</p>
+		<p style="font-size: 18px; font-weight: bold; color:rgb(229, 118, 70); letter-spacing: 1px;">%s</p>
 		<p>This token will expire in 15 minutes. If you did not make this request, please ignore this email.</p>
 	`, token)
 
 	msg := []byte(subject + mime + body)
-	addr := fmt.Sprintf("%s%s", config.SMTPHost,config.SMTPPort)
+	addr := fmt.Sprintf("%s:%s", config.SMTPHost,config.SMTPPort)
 
 	err := smtp.SendMail(addr, auth, config.Sender, []string{toEmail}, msg)
 	if err != nil {

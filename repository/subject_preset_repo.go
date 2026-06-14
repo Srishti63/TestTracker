@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"test_tracker_backend/domain"
-	"github.com/google/uuid"
 )
 
 type subjectPresetRepository struct {
@@ -16,23 +15,28 @@ func NewSubjectPresetRepository(db *sql.DB) domain.SubjectPresetRepository {
 }
 
 func (r *subjectPresetRepository) CreateMany(ctx context.Context, presets []domain.SubjectPreset) error {
-	query := `INSERT INTO subject_presets (_id, test_group_id, subject_name, total_marks) VALUES ($1, $2, $3, $4);`
-	
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `INSERT INTO subject_presets (id, test_group_id, subject_id, total_marks) VALUES ($1, $2, $3, $4)`
 	for _, p := range presets {
-		id := p.ID
-		if id == "" {
-			id = uuid.New().String()
-		}
-		_, err := r.db.ExecContext(ctx, query, id, p.TestGroupID, p.SubjectName, p.TotalMarks)
-		if err != nil {
+		if _, err := tx.ExecContext(ctx, query, p.ID, p.TestGroupID, p.SubjectID, p.TotalMarks); err != nil {
 			return err
 		}
 	}
-	return nil
+	return tx.Commit()
 }
 
 func (r *subjectPresetRepository) GetByGroupID(ctx context.Context, groupID string) ([]domain.SubjectPreset, error) {
-	query := `SELECT _id, test_group_id, subject_name, total_marks FROM subject_presets WHERE test_group_id = $1;`
+	query := `
+		SELECT sp.id, sp.test_group_id, sp.subject_id, s.name as subject_name, sp.total_marks 
+		FROM subject_presets sp
+		JOIN subjects s ON sp.subject_id = s.id
+		WHERE sp.test_group_id = $1`
+
 	rows, err := r.db.QueryContext(ctx, query, groupID)
 	if err != nil {
 		return nil, err
@@ -42,16 +46,10 @@ func (r *subjectPresetRepository) GetByGroupID(ctx context.Context, groupID stri
 	var presets []domain.SubjectPreset
 	for rows.Next() {
 		var p domain.SubjectPreset
-		if err := rows.Scan(&p.ID, &p.TestGroupID, &p.SubjectName, &p.TotalMarks); err != nil {
+		if err := rows.Scan(&p.ID, &p.TestGroupID, &p.SubjectID, &p.SubjectName, &p.TotalMarks); err != nil {
 			return nil, err
 		}
 		presets = append(presets, p)
 	}
 	return presets, nil
-}
-
-func (r *subjectPresetRepository) DeleteByGroupID(ctx context.Context, groupID string) error {
-	query := `DELETE FROM subject_presets WHERE test_group_id = $1;`
-	_, err := r.db.ExecContext(ctx, query, groupID)
-	return err
 }
