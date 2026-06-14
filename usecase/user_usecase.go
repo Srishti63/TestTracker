@@ -2,13 +2,15 @@ package usecase
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"test_tracker_backend/domain"
-	"test_tracker_backend/internal/tokkenutil"
 	"test_tracker_backend/internal/mailutil"
+	"test_tracker_backend/internal/tokkenutil"
 	"time"
-	"crypto/rand"
+	"strings"
+	"log"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -19,65 +21,67 @@ type userUsecase struct {
 	contextTimeout time.Duration
 	jwtSecret      string
 	jwtExpiryHours int
+	mailConfig     *mailutil.EmailConfig
 }
 
-func NewUserUsecase(repo domain.UserRepository, timeout time.Duration, secret string, expiry int) domain.UserUsecase {
+func NewUserUsecase(repo domain.UserRepository, timeout time.Duration, secret string, expiry int, mc *mailutil.EmailConfig) domain.UserUsecase {
 	return &userUsecase{
 		userRepo:       repo,
+		mailConfig:     mc,
 		contextTimeout: timeout,
 		jwtSecret:      secret,
 		jwtExpiryHours: expiry,
 	}
 }
 
-func (u *userUsecase) Register(ctx context.Context , req *domain.RegisterRequest)error{
-	ctx, cancel := context.WithTimeout(ctx ,u.contextTimeout)
+func (u *userUsecase) Register(ctx context.Context, req *domain.RegisterRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
 
 	if req.Email == "" || req.Name == "" || req.Password == "" {
 		return errors.New("All the fields are mandatory")
 	}
 
-	existingUser, _ := u.userRepo.GetByEmail(ctx , req.Email)
-	if existingUser != nil{
+	existingUser, _ := u.userRepo.GetByEmail(ctx, req.Email)
+	if existingUser != nil {
 		return errors.New("User with same email already exists")
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password),12)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
 	if err != nil {
 		return errors.New("security system failed to process credentials")
 	}
-	
+
 	user := &domain.User{
-		ID: uuid.New().String(),
-		Email: req.Email,
+		ID:           uuid.New().String(),
+		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
-		Name: req.Name,
+		Name:         req.Name,
 	}
 
 	return u.userRepo.Create(ctx, user)
 
 }
 
-func (u *userUsecase) Login (ctx context.Context ,req  *domain.LoginRequest)(string ,error){
-	ctx,cancel := context.WithTimeout(ctx,u.contextTimeout)
+func (u *userUsecase) Login(ctx context.Context, req *domain.LoginRequest) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
 
-	if req.Email == "" || req.Password == ""{
+	if req.Email == "" || req.Password == "" {
 		return "", errors.New("Required feilds are missing")
 	}
 
-	user,err := u.userRepo.GetByEmail(ctx, req.Email)
-	if err != nil{
+	user, err := u.userRepo.GetByEmail(ctx, req.Email)
+	if err != nil {
 		return "", errors.New("Invalid Email or password configuration")
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash),[]byte(req.Password))
-	if err != nil{
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
+	if err != nil {
 		return "", errors.New("Invalid email or password configurations")
 	}
 
-	token, err := tokkenutil.CreateAccessToken(user ,u.jwtSecret, u.jwtExpiryHours)
+	token, err := tokkenutil.CreateAccessToken(user, u.jwtSecret, u.jwtExpiryHours)
 	if err != nil {
 		return "", errors.New("Token authentication engine configuration breakdown")
 	}
@@ -85,35 +89,12 @@ func (u *userUsecase) Login (ctx context.Context ,req  *domain.LoginRequest)(str
 	return token, nil
 }
 
-// func (u *userUsecase) ResetPassword (ctx context.Context, req *domain.ResetPasswordRequest) error{
-// 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
-// 	defer cancel()
-
-// 	user, err := u.userRepo.GetByEmail(ctx, req.Email)
-// 	if err != nil {
-// 		return errors.New("Identity mapping lookup failed")
-// 	}
-
-// 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash),[]byte(req.OldPassword))
-// 	if err != nil {
-// 		return errors.New("Current credentials varification failed")
-// 	}
-
-// 	newHashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword),12)
-// 	if err != nil{
-// 		return errors.New("CryptoGraphic mutation process failure") // a statement of error yet interesting thing to read ,read later 
-// 	}
-
-// 	return u.userRepo.UpdatePassword(ctx, user.ID, string(newHashedPassword))
-
-// }
-
-func (u *userUsecase) ForgotPassword (ctx context.Context , email string) error{
-	ctx , cancel := context.WithTimeout(ctx, u.contextTimeout)
+func (u *userUsecase) ForgotPassword(ctx context.Context, email string) error {
+	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
 
-	user,err := u.userRepo.GetByEmail(ctx, email)
-	if err != nil{
+	user, err := u.userRepo.GetByEmail(ctx, email)
+	if err != nil {
 		// return errors.New("No user registered with this id")
 		return nil
 	}
@@ -125,19 +106,12 @@ func (u *userUsecase) ForgotPassword (ctx context.Context , email string) error{
 
 	expiry := time.Now().Add(15 * time.Minute)
 
-	err = u.userRepo.UpdateResetToken(ctx,user.ID,token,expiry)
+	err = u.userRepo.UpdateResetToken(ctx, user.ID, token, expiry)
 	if err != nil {
 		return errors.New("Couldn't complete the verification")
 	}
 
-	mailConfig :=mailutil.EmailConfig{
-		SMTPHost: "smtp.gmail.com",
-		SMTPPort: "587",
-		Sender:  "sdejew",
-		Password: "something",
-	}
-
-	return mailutil.SendResetTokenEmail(&mailConfig,token ,user.Email)
+	return mailutil.SendResetTokenEmail(u.mailConfig, token, user.Email)
 }
 
 func (u *userUsecase) ConfirmPasswordReset(ctx context.Context, req *domain.ConfirmPasswordResetRequest) error {
@@ -149,9 +123,22 @@ func (u *userUsecase) ConfirmPasswordReset(ctx context.Context, req *domain.Conf
 		return errors.New("invalid verification context parameters")
 	}
 
-	if user.ResetToken == nil || *user.ResetToken != req.RandomToken {
-		return errors.New("invalid or incorrect verification token sequence")
-	}
+	if user.ResetToken == nil {
+    log.Println("❌ DEBUG: user.ResetToken is NIL in memory! Check your database column struct tags.")
+    return errors.New("invalid or incorrect verification token sequence")
+}
+
+// 2. Print both values side-by-side to catch hidden characters or spaces
+log.Printf("📥 DEBUG: DB Token from Postgres: '%s'", *user.ResetToken)
+log.Printf("📤 DEBUG: Input Token from Hoppscotch: '%s'", req.RandomToken)
+
+// 3. Trim invisible spaces and compare them safely
+cleanDbToken := strings.TrimSpace(*user.ResetToken)
+cleanInputToken := strings.TrimSpace(req.RandomToken)
+
+if cleanDbToken != cleanInputToken {
+    return errors.New("invalid or incorrect verification token sequence")
+}
 
 	if user.ResetTokenExpiry == nil || time.Now().After(*user.ResetTokenExpiry) {
 		return errors.New("verification token lifecycle has expired")
@@ -182,10 +169,10 @@ func (u *userUsecase) UpdatePassword(ctx context.Context, userID string, newPass
 	return u.userRepo.UpdatePassword(ctx, userID, string(hashedPassword))
 }
 
-func generateSecureToken (length int)(string, error){
-	bytes := make([]byte,length)
-	if _,error := rand.Read(bytes); error != nil {
-		return "",error
+func generateSecureToken(length int) (string, error) {
+	bytes := make([]byte, length)
+	if _, error := rand.Read(bytes); error != nil {
+		return "", error
 	}
-	return hex.EncodeToString(bytes) , nil
+	return hex.EncodeToString(bytes), nil
 }

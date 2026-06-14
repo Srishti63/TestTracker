@@ -3,8 +3,6 @@ package domain
 import (
 	"context"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 // User represents the core database entity schema mapped to PostgreSQL.
@@ -14,7 +12,7 @@ type User struct {
 	PasswordHash       string     `json:"-" db:"passwordhash"` // "-" prevents hash from leaking in JSON marshaling
 	Name               string     `json:"name" db:"name"`
 	CreatedAt          time.Time  `json:"created_at" db:"created_at"`
-	ResetToken         *string    `json:"-" db:"reset_token"`        // Pointer type allows NULL in DB
+	ResetToken         *string    `gorm:"column:reset_token" db:"reset_token" json:"reset_token"`
 	ResetTokenExpiry   *time.Time `json:"-" db:"reset_token_expiry"` // Pointer type allows NULL in DB
 }
 
@@ -57,11 +55,4 @@ type UserUsecase interface {
 	UpdatePassword(ctx context.Context, userID string, newPassword string) error
 	ForgotPassword(ctx context.Context, email string) error
 	ConfirmPasswordReset(ctx context.Context, req *ConfirmPasswordResetRequest) error
-}
-
-type UserController interface {
-    Register(c *gin.Context)
-    Login(c *gin.Context)
-    ForgotPassword(c *gin.Context)
-    ConfirmPasswordReset(c *gin.Context)
 }

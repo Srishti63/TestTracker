@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 	"test_tracker_backend/domain"
+	"test_tracker_backend/dto"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,7 +12,7 @@ type userController struct {
 	UserUsecase domain.UserUsecase
 }
 
-func NewUserController(usecase domain.UserUsecase) domain.UserController {
+func NewUserController(usecase domain.UserUsecase) *userController {
 	return &userController{
 		UserUsecase: usecase,
 	}
@@ -20,14 +21,14 @@ func NewUserController(usecase domain.UserUsecase) domain.UserController {
 
 func (u *userController) Register(c *gin.Context) {
 	ctx := c.Request.Context()
-	var dto RegisterDTO
+	var req dto.RegisterDTO
 
-	if err := c.ShouldBindJSON(&dto); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	domainReq := dto.ToDomain()
+	domainReq := req.ToDomain()
 	err := u.UserUsecase.Register(ctx, domainReq)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -39,14 +40,14 @@ func (u *userController) Register(c *gin.Context) {
 
 func (u *userController) Login(c *gin.Context) {
 	ctx := c.Request.Context()
-	var dto LoginDTO
+	var req  dto.LoginDTO
 
-	if err := c.ShouldBindJSON(&dto); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	domainReq := dto.ToDomain()
+	domainReq := req.ToDomain()
 	token, err := u.UserUsecase.Login(ctx, domainReq)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
@@ -62,14 +63,14 @@ func (u *userController) Login(c *gin.Context) {
 
 func (u *userController) ForgotPassword(c *gin.Context) {
 	ctx := c.Request.Context()
-	var dto ForgotPasswordDTO
+	var req dto.ForgotPasswordDTO
 
-	if err := c.ShouldBindJSON(&dto); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	domainReq := dto.ToDomain()
+	domainReq := req.ToDomain()
 	err := u.UserUsecase.ForgotPassword(ctx, domainReq.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -82,14 +83,14 @@ func (u *userController) ForgotPassword(c *gin.Context) {
 
 func (u *userController) ConfirmPasswordReset(c *gin.Context) {
 	ctx := c.Request.Context()
-	var dto ConfirmPasswordResetDTO
+	var req dto.ConfirmPasswordResetDTO
 
-	if err := c.ShouldBindJSON(&dto); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	domainReq := dto.ToDomain()
+	domainReq := req.ToDomain()
 	err := u.UserUsecase.ConfirmPasswordReset(ctx, domainReq)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

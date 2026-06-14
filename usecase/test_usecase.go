@@ -1,51 +1,60 @@
 package usecase
 
-import(
-	"time"
+import (
 	"context"
 	"errors"
+	"time"
 	"test_tracker_backend/domain"
 	"github.com/google/uuid"
 )
 
-type testUsecase struct{
-	testRepo domain.TestRepository
+type testUsecase struct {
+	repo           domain.TestRepository
 	contextTimeout time.Duration
 }
 
-func NewTestUsecase(repo domain.TestRepository , timeout time.Duration) domain.TestUsecase{
-	return &testUsecase{
-		testRepo : repo,
-		contextTimeout: timeout,
-	}
+func NewTestUsecase(r domain.TestRepository, timeout time.Duration) domain.TestUsecase {
+	return &testUsecase{repo: r, contextTimeout: timeout}
 }
 
-func (tu* testUsecase) LogPerformance(ctx context.Context, test *domain.Test , entries []domain.Entry) error {
-	ctx , cancel := context.WithTimeout(ctx , tu.contextTimeout)
+func (u *testUsecase) CreateTest(ctx context.Context, param *domain.CreateTestParam) error {
+	c, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
 
-	if test.TestGroupID == "" {
-		return errors.New("cannot log a test without a valid test group identifier")
-	}
-	if len(entries) == 0 {
-		return errors.New("cannot log a test event with zero subject scores")
+	if param.Title == "" || param.TestGroupID == "" || len(param.Entries) == 0 {
+		return errors.New("incomplete test parameters; scores cannot be empty")
 	}
 
-	test.ID = uuid.New().String()
+	testID := uuid.New().String()
+	var coreEntries []domain.TestEntry
 
-	test.CreatedAt = time.Now().Format("2006-01-02")
-
-	// 3. Link the child score slices back to this parent Test record
-	for i := range entries {
-		if entries[i].MarksObtained < 0 {
-			return errors.New("marks obtained cannot be negative values")
-		}
-		// Essential step: assign the parent foreign key link
-		entries[i].TestID = test.ID
+	for _, e := range param.Entries {
+		coreEntries = append(coreEntries, domain.TestEntry{
+			ID:            uuid.New().String(),
+			TestID:        testID,
+			SubjectID:     e.SubjectID,
+			MarksObtained: e.MarksObtained,
+		})
 	}
 
-	// 4. Pass the fully assembled objects down to the repository database layer
-	// This invokes your database transaction block to write rows safely!
-	return tu.testRepo.CreateWithEntries(ctx, test, entries)
+	test := &domain.Test{
+		ID:          testID,
+		TestGroupID: param.TestGroupID,
+		Title:       param.Title,
+		CreatedAt:   time.Now(),
+		Entries:     coreEntries,
+	}
 
+	return u.repo.Create(c, test)
+}
+
+func (u *testUsecase) FetchGroupTests(ctx context.Context, groupID string) ([]domain.Test, error) {
+	c, cancel := context.WithTimeout(ctx, u.contextTimeout)
+	defer cancel()
+
+	if groupID == "" {
+		return nil, errors.New("test group tracking container reference missing")
+	}
+
+	return u.repo.GetByGroupID(c, groupID)
 }

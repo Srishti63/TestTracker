@@ -1,4 +1,4 @@
-package controller
+package dto
 
 import "test_tracker_backend/domain"
 
